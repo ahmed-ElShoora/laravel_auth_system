@@ -18,24 +18,32 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): Response
-    {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->string('password')),
-        ]);
+public function store(Request $request)
+{
+    $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+        'password' => ['required', Rules\Password::defaults()],
+    ]);
 
-        event(new Registered($user));
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        Auth::login($user);
+    // إرسال إيميل التفعيل
+    $user->sendEmailVerificationNotification();
 
-        return response()->noContent();
-    }
+    // تشغيل event التسجيل
+    event(new Registered($user));
+
+    // لا تعمل تسجيل دخول
+    return response()->json([
+        'message' => 'Registration successful. Please check your email to verify your account.'
+    ], 201);
+
+
+}
 }
